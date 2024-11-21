@@ -76,11 +76,14 @@ app.post('/login', async (req, res) => {
   try {
     const {email, password} = req.body;
     const user = await User.findOne({email});
+    console.log('Found the user');
     if (user) {
       const validPassword = await bcrypt.compare(password, user.password);
       if (!validPassword) {
         return res.status(401).json({message: 'Invalid credentials'});
       }
+    } else {
+      return res.status(400).json({message: 'Your email was not registered'});
     }
     const secretKey = crypto.randomBytes(32).toString('hex');
     const token = jwt.sign({userId: user._id}, secretKey);
