@@ -3,7 +3,7 @@ const bodyParser = require('body-parser');
 const dotenv = require('dotenv');
 const mongoose = require('mongoose');
 const crypto = require('crypto');
-const moment = require('moment');
+const bcrypt = require('bcryptjs');
 
 dotenv.config();
 
@@ -44,12 +44,27 @@ app.get('/', (req, res) => {
 
 app.post('/register', async (req, res) => {
   try {
-    const userData = req.body;
-    const newUser = new User(userData);
+    const {email, password, firstName, lastName, selectedRole} = req.body;
+    if (!email || !password || !firstName || !lastName || !selectedRole) {
+      return res.status(400).json({
+        error: 'Required Fields Missing',
+      });
+    }
+    const user = await User.findOne({email});
+    if (user) {
+      return res.json({message: 'User Already Exists'});
+    }
+    const hashPassword = await bcrypt.hash(password, 10);
+    const newUser = new User({
+      email,
+      password: hashPassword,
+      firstName,
+      lastName,
+      selectedRole,
+    });
     await newUser.save();
     const secretKey = crypto.randomBytes(32).toString('hex');
     const token = jwt.sign({userId: newUser._id}, secretKey);
-
     res.status(200).json({token});
   } catch (error) {
     console.log('Error in registering', error);
@@ -61,12 +76,11 @@ app.post('/login', async (req, res) => {
   try {
     const {email, password} = req.body;
     const user = await User.findOne({email});
-    if (!user) {
-      return res.status(401).json({message: 'Invalied Email'});
-    }
-
-    if (user.password !== password) {
-      return res.status(401).json({message: 'Invalid Password'});
+    if (user) {
+      const validPassword = await bcrypt.compare(password, user.password);
+      if (!validPassword) {
+        return res.status(401).json({message: 'Invalid credentials'});
+      }
     }
     const secretKey = crypto.randomBytes(32).toString('hex');
     const token = jwt.sign({userId: user._id}, secretKey);

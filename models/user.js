@@ -21,9 +21,6 @@ const userSchema = new mongoose.Schema(
     image: {
       type: String,
     },
-    skill: {
-      type: String,
-    },
     selectedRole: {
       type: String,
     },
